@@ -34,3 +34,13 @@
 
 ### 新增
 - 新增bdbeian.py文件，用于调用备案查询API。
+
+
+## [0.0.6] 2024-12-09
+### 修改
+- 优化了日志功能
+- 优化了代码注释
+
+### 新增
+- 新增baiduauth.py文件，用于百度API鉴权
+- 新增BaiduAddressRecognition.py文件，用于调用百度AI地址识别API并使用baidiauth.py文件进行鉴权
