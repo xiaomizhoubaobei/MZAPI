@@ -41,34 +41,26 @@ WenAnSou_api = WenAnSou()
 response = WenAnSou_api.get_response("新海城")
 print(response)
 ```
-
-这个方法会返回一个包含三个信息的字典。
-
-### 返回值
-`get_response`方法将返回一个字典，包含以下信息：
-- `id` (int): 请求的唯一标识符（当前时间戳）。
-- `time` (str): 请求发送的时间，格式为“年-月-日 时:分:秒”。
-- `response` (str): 服务器返回的响应文本。
-
-### 示例代码
-以下是一个完整的示例代码，展示如何使用`wenansou`：
-
-```python
-from MZAPI.wenansou import WenAnSou
-
-try:
-    # 发送请求并获取响应
-    WenAnSou_api = WenAnSou()
-    response = WenAnSou_api.get_response("新海城")
-    print("请求ID:", response["id"])
-    print("请求时间:", response["time"])
-    print("服务器响应:", response["response"])
-except Exception as e:
-    print("发生错误:", str(e))
-```
+这个方法会返回一个包含四个信息的字典。
 
 ## 参数说明
 - **content** (str): 要发送到服务器的消息内容。这个参数是必需的，决定了请求的内容。
+
+### 返回示例
+```json
+{
+  "id": 1733993834,
+  "traceID": "3f5c91859d05c1d17aaeb91224deb9e0",
+  "time": "2024-12-12 16:57:14",
+  "response": "每一本书是一级小阶梯，我每爬上一级，就更脱离畜生而上升到人类，更接近美好生活的观念，更热爱书籍。"
+}
+```
+### 返回参数说明
+- **id** (int): 唯一标识符，用于追踪请求。
+- **traceID** (str): 追踪ID，用于分布式追踪。
+
+**完整源码**
+   - 完整源码请参见[baidubeian.py](../examples/baidubeian.py)文件。
 
 ## 错误处理
 在使用`wenansou`SDK时，您可能会遇到一些错误。以下是一些常见错误及其处理方法：
