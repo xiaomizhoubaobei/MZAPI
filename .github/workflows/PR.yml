@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+    types: [opened]  # 仅在新建PR时触发
 
 
 jobs:
@@ -20,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12'
 
       - name: Install pipenv
         run: |
