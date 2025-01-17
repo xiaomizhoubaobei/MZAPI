@@ -2,7 +2,7 @@ on:
   pull_request:
     branches: [ "master" ]
 permissions:
-  contents: read-all
+  contents: read
   pull-requests: write
 
 jobs:
