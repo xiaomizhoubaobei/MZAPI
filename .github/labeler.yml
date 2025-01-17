@@ -1,0 +1,3 @@
+sdk-example-code:
+- changed-files:
+  - any-glob-to-any-file: '**/*.py'
