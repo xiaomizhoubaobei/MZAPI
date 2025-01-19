@@ -47,14 +47,13 @@ jobs:
           name: audit-results
           path: |
             bandit_results.txt
-            flake8_results.txt
             mypy_results.txt
             loop_analyzer_results.txt
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'audit-results'  # 构件路径
+          subject-path:   bandit_results.txt,mypy_results.txt,loop_analyzer_results.txt
 
       - name: Comment results to PR
         if: github.event_name == 'pull_request'
