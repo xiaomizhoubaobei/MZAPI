@@ -39,7 +39,7 @@ jobs:
 
       - name: Analyze Loops
         run: |
-          python .github/scripts/loop_analyzer.py > loop_analyzer_results.txt
+          python .github/loop_analyzer.py > loop_analyzer_results.txt
 
       - name: Upload audit results
         uses: actions/upload-artifact@v4
