@@ -39,10 +39,6 @@ jobs:
         run: |
           mypy --ignore-missing-imports $(git ls-files '*.py') > mypy_results.txt
 
-      - name: Analyze Loops
-        run: |
-          python .github/loop_analyzer.py > loop_analyzer_results.txt
-
       - name: Upload audit results
         uses: actions/upload-artifact@v4
         with:
@@ -50,12 +46,11 @@ jobs:
           path: |
             bandit_results.txt
             mypy_results.txt
-            loop_analyzer_results.txt
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-            subject-path: bandit_results.txt,mypy_results.txt,loop_analyzer_results.txt
+            subject-path: bandit_results.txt,mypy_results.txt
 
       - name: Comment results to PR
         if: github.event_name == 'pull_request'
