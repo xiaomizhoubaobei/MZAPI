@@ -52,11 +52,6 @@ jobs:
             mypy_results.txt
             loop_analyzer_results.txt
 
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: bandit_results.txt,mypy_results.txt,loop_analyzer_results.txt  # 构件路径
-
       - name: Comment results to PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -68,7 +63,6 @@ jobs:
             const results = [
               { name: 'Bandit 结果', file: 'bandit_results.txt' },
               { name: 'Mypy 结果', file: 'mypy_results.txt' },
-              { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
 
             // 使用环境变量获取运行平台信息
