@@ -13,6 +13,8 @@ jobs:
       id-token: write
       contents: read
       attestations: write
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -39,22 +41,21 @@ jobs:
 
       - name: Analyze Loops
         run: |
-          python .github/scripts/loop_analyzer.py > loop_analyzer_results.txt
+          python .github/loop_analyzer.py > loop_analyzer_results.txt
 
       - name: Upload audit results
         uses: actions/upload-artifact@v4
         with:
-          name: audit-results
+          name: audit-results-${{ runner.os }}
           path: |
             bandit_results.txt
-            flake8_results.txt
             mypy_results.txt
             loop_analyzer_results.txt
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'audit-results'  # 构件路径
+          subject-path: bandit_results.txt,mypy_results.txt,loop_analyzer_results.txt  # 构件路径
 
       - name: Comment results to PR
         if: github.event_name == 'pull_request'
