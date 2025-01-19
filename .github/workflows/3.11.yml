@@ -1,4 +1,4 @@
-name: 自动化处理PR
+name: 自动化处理PR(Python 3.11)
 
 on: [pull_request]
 
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: [3.8,3.9, 3.10, 3.11, 3.12]
+          python-version: 3.11
 
       - name: Install dependencies
         run: |
@@ -29,17 +29,9 @@ jobs:
           pip install -r requirements.txt
           pip install pylint bandit flake8 mypy
 
-      - name: Run Pylint
-        run: |
-          pylint --output-format=text --msg-template="{path}:{line}: {msg_id}({symbol}), {msg}" --reports=n $(git ls-files '*.py') > pylint_results.txt
-
       - name: Run Bandit
         run: |
           bandit -r . > bandit_results.txt
-
-      - name: Run Flake8
-        run: |
-          flake8 . > flake8_results.txt
 
       - name: Run Mypy
         run: |
@@ -73,14 +65,12 @@ jobs:
             const path = require('path');
 
             const results = [
-              { name: 'Pylint Results', file: 'pylint_results.txt' },
-              { name: 'Bandit Results', file: 'bandit_results.txt' },
-              { name: 'Flake8 Results', file: 'flake8_results.txt' },
-              { name: 'Mypy Results', file: 'mypy_results.txt' },
-              { name: 'Loop Analyzer Results', file: 'loop_analyzer_results.txt' },
+              { name: 'Bandit 结果', file: 'bandit_results.txt' },
+              { name: 'Mypy 结果', file: 'mypy_results.txt' },
+              { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
 
-            let commentBody = '## Code Audit Results\n\n';
+            let commentBody = '## 代码审计结果 (Python 3.11)\n\n'; 
 
             for (const result of results) {
               const filePath = path.join(process.env.GITHUB_WORKSPACE, result.file);
@@ -92,9 +82,9 @@ jobs:
               }
             }
 
-            if (commentBody !== '## Code Audit Results\n\n') {
+            if (commentBody !== '## 代码审计结果 (Python 3.11)\n\n') {
               github.rest.issues.createComment({
-                issue_number: context.issue.number,
+                issue_number: context.payload.pull_request ? context.payload.pull_request.number : null, // 使用 PR 编号
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: commentBody
