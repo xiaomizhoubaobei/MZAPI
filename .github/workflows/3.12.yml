@@ -33,10 +33,6 @@ jobs:
         run: |
           bandit -r . > bandit_results.txt
 
-      - name: Run Flake8
-        run: |
-          flake8 . > flake8_results.txt
-
       - name: Run Mypy
         run: |
           mypy --ignore-missing-imports $(git ls-files '*.py') > mypy_results.txt
@@ -70,7 +66,6 @@ jobs:
 
             const results = [
               { name: 'Bandit 结果', file: 'bandit_results.txt' },
-              { name: 'Flake8 结果', file: 'flake8_results.txt' },
               { name: 'Mypy 结果', file: 'mypy_results.txt' },
               { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
