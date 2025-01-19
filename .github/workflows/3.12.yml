@@ -52,11 +52,6 @@ jobs:
             mypy_results.txt
             loop_analyzer_results.txt
 
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path:   bandit_results.txt,mypy_results.txt,loop_analyzer_results.txt
-
       - name: Comment results to PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -71,7 +66,10 @@ jobs:
               { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
 
-            let commentBody = '## 代码审计结果 (Python 3.12)\n\n'; 
+            // 使用环境变量获取运行平台信息
+            const platform = process.env.RUNNER_OS || '未知平台'; // 默认为 'Unknown OS' 以防变量不可用
+
+            let commentBody = `## 代码审计结果 (Python 3.12) - 运行平台: ${platform}\n\n`; 
 
             for (const result of results) {
               const filePath = path.join(process.env.GITHUB_WORKSPACE, result.file);
@@ -83,7 +81,7 @@ jobs:
               }
             }
 
-            if (commentBody !== '## 代码审计结果 (Python 3.12)\n\n') {
+            if (commentBody !== `## 代码审计结果 (Python 3.12) - 运行平台: ${platform}\n\n`) {
               github.rest.issues.createComment({
                 issue_number: context.payload.pull_request ? context.payload.pull_request.number : null, // 使用 PR 编号
                 owner: context.repo.owner,
