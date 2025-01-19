@@ -1,4 +1,4 @@
-name: 自动化处理PR(Python 3.11)
+name: 自动化处理PR(Python 3.9)
 
 on: [pull_request]
 
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: 3.9
 
       - name: Install dependencies
         run: |
@@ -75,7 +75,7 @@ jobs:
               { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
 
-            let commentBody = '## 代码审计结果 (Python 3.11)\n\n'; 
+            let commentBody = '## 代码审计结果 (Python 3.9)\n\n'; 
 
             for (const result of results) {
               const filePath = path.join(process.env.GITHUB_WORKSPACE, result.file);
@@ -87,7 +87,7 @@ jobs:
               }
             }
 
-            if (commentBody !== '## 代码审计结果 (Python 3.11)\n\n') {
+            if (commentBody !== '## 代码审计结果 (Python 3.9)\n\n') {
               github.rest.issues.createComment({
                 issue_number: context.payload.pull_request ? context.payload.pull_request.number : null, // 使用 PR 编号
                 owner: context.repo.owner,

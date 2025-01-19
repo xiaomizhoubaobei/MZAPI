@@ -29,10 +29,6 @@ jobs:
           pip install -r requirements.txt
           pip install pylint bandit flake8 mypy
 
-      - name: Run Pylint
-        run: |
-          pylint --output-format=text --msg-template="{path}:{line}: {msg_id}({symbol}), {msg}" --reports=n $(git ls-files '*.py') > pylint_results.txt
-
       - name: Run Bandit
         run: |
           bandit -r . > bandit_results.txt
@@ -73,7 +69,6 @@ jobs:
             const path = require('path');
 
             const results = [
-              { name: 'Pylint 结果', file: 'pylint_results.txt' },
               { name: 'Bandit 结果', file: 'bandit_results.txt' },
               { name: 'Flake8 结果', file: 'flake8_results.txt' },
               { name: 'Mypy 结果', file: 'mypy_results.txt' },
