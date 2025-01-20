@@ -1,4 +1,4 @@
-name: 自动化处理PR(Python 3.12)
+name: 自动化处理PR(Python 3.11)
 
 on: [pull_request]
 
@@ -43,6 +43,7 @@ jobs:
         run: |
           python .github/loop_analyzer.py > loop_analyzer_results.txt
 
+
       - name: Upload audit results
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +69,7 @@ jobs:
             const results = [
               { name: 'Bandit 结果', file: 'bandit_results.txt' },
               { name: 'Mypy 结果', file: 'mypy_results.txt' },
-              { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },}
+              { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },
             ];
 
             // 使用环境变量获取运行平台信息
