@@ -9,6 +9,7 @@
 ```bash
 pip install MZAPI
 ```
+详细用法请见 [示例代码列表](list.md)。
 
 ## 注意事项
 
