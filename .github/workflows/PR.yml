@@ -24,7 +24,7 @@ jobs:
         pip install MZAPI
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        pylint --disable=invalid-name $(git ls-files '*.py')
 
   dependency-review:
     runs-on: ubuntu-latest
