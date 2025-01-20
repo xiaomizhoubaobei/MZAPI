@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest,"arm64","x86_64"]
 
     permissions:
       id-token: write
@@ -39,6 +39,10 @@ jobs:
         run: |
           mypy --ignore-missing-imports $(git ls-files '*.py') > mypy_results.txt
 
+      - name: Analyze Loops
+        run: |
+          python .github/loop_analyzer.py > loop_analyzer_results.txt
+
       - name: Upload audit results
         uses: actions/upload-artifact@v4
         with:
@@ -64,6 +68,7 @@ jobs:
             const results = [
               { name: 'Bandit 结果', file: 'bandit_results.txt' },
               { name: 'Mypy 结果', file: 'mypy_results.txt' },
+              { name: '循环分析器结果', file: 'loop_analyzer_results.txt' },}
             ];
 
             // 使用环境变量获取运行平台信息
