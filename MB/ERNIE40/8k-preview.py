@@ -1,21 +1,19 @@
 """
-这个模块提供了一个简单的接口来与ERNIE-4.0-8K-preview模型进行交互。
-它允许用户通过提供文本输入来获取模型的响应。
+这个模块提供了ERNIE-4.0-8K模型的交互接口
 """
 
 from MZAPI.MB.ERNIE40.EightK_preview import EightK_preview
 
-def main():
-    """
-    主函数，用于演示如何使用ERNIE-4.0-8K-preview模型。
 
-    它创建了一个EightK模型的实例，将测试文本传递给它，
-    并打印出模型的响应。
-    """
-    # 用户AK和SK在https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application中获取
-    model = EightK_preview("自定义客户端名称", "用户AK", "用户SK")
+def main():
+    """演示ERNIE-4.0-8K模型的使用"""
+
+    # 用户AK/SK在以下地址获取：
+    # https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application
+    model = EightK_preview("custom_client", "user_ak", "user_sk")
     result = model.get_response("测试文本")
     print(result)
+
 
 if __name__ == "__main__":
     main()
