@@ -1,0 +1,144 @@
+name: Architecture Visualization Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'MZAPI/**'
+      - 'src/**'
+      - 'scripts/arch_*.py'
+
+jobs:
+  full-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Setup analysis environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            graphviz \
+            plantuml \
+            imagemagick \
+            libxml2-dev \
+            libxslt-dev
+
+      - name: Install Python packages
+        run: |
+          pip install --upgrade pip
+          pip install \
+            pylint \
+            pyreverse \
+            matplotlib \
+            qcloud-cos \
+            plantuml \
+            pyyaml
+
+      - name: Generate architecture diagrams
+        env:
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        run: |
+          # 动态路径检测
+          CHANGED_MODULES=$(git diff --name-only HEAD^ HEAD | grep -E 'MZAPI/|src/' | xargs dirname | sort -u | tr '\n' ' ')
+          
+          # 多维度分析
+          pyreverse -o png -ASmn -p FullSystem $CHANGED_MODULES
+          pyreverse -k -o png -p Packages .
+          find MZAPI -name '*.py' | xargs pylint --generate-uml=sequence
+          plantuml *.puml
+          pyan MZAPI/**/*.py --uses --dot | dot -Tpng -o callgraph.png
+          
+          # 代码热度分析
+          git log --since="30 days ago" --pretty=format: --name-only | grep '\.py$' | sort | uniq -c > hotspots.txt
+          python -c "
+          import matplotlib.pyplot as plt
+          data = [line.strip().split() for line in open('hotspots.txt')][:10]
+          plt.barh([x[-1] for x in data], [int(x[0]) for x in data])
+          plt.savefig('hotspots.png', bbox_inches='tight')
+          "
+
+          mkdir -p arch_assets
+          mv *.png arch_assets/
+          mv *.puml arch_assets/
+
+      - name: Upload to COS
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: |
+          pip install coscmd
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+
+          PR_NUM=${{ github.event.pull_request.number }}
+          TIMESTAMP=$(date -u +"%Y%m%dT%H%M%S")
+          COMMIT_SHA=${GITHUB_SHA:0:7}
+          COS_PATH="arch/pr-$PR_NUM/$COMMIT_SHA-$TIMESTAMP"
+
+          coscmd upload -r arch_assets/ "$COS_PATH" \
+            --acl public-read \
+            -H "Cache-Control: no-cache"
+
+          echo "ARCH_URL=https://pr.mizhoubaobei.top/$COS_PATH" >> $GITHUB_ENV
+
+      - name: Generate PR report
+        uses: actions/github-script@v6
+        env:
+          DIAGRAM_BASE: ${{ env.ARCH_URL }}
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const timestamp = Date.now();
+            const commentBody = `
+            ## 🏭 智能架构分析报告（动态生成）
+
+            ### 核心可视化
+            ![类图](${process.env.DIAGRAM_BASE}/classes_FullSystem.png?ts=${timestamp})
+            ![包依赖](${process.env.DIAGRAM_BASE}/packages_Packages.png?ts=${timestamp})
+
+            ### 运行时分析
+            ![调用关系](${process.env.DIAGRAM_BASE}/callgraph.png?ts=${timestamp})
+            ![代码热点](${process.env.DIAGRAM_BASE}/hotspots.png?ts=${timestamp})
+
+            ### 变更影响分析
+            ${files.filter(f => f.filename.includes('MZAPI')).map(f => `
+            - \`${f.filename}\`  
+              状态: ${f.status} | 变更: +${f.additions} -${f.deletions}
+            `).join('\n')}
+
+            **版本指纹**: \`${{ github.sha }}\`  
+            **完整报告**: [COS浏览器查看](${process.env.DIAGRAM_BASE})
+            `;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Cleanup artifacts
+        if: always()
+        run: |
+          rm -rf arch_assets/
+          find . -name '*.puml' -delete
