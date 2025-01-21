@@ -1,9 +1,10 @@
-name: Architecture Visualization Pipeline
+name: 架构图
 
 on:
   pull_request:
+
     paths:
-      - 'MZAPI/**'
+      - 'MB/**'
       - 'src/**'
       - 'scripts/arch_*.py'
 
@@ -55,7 +56,7 @@ jobs:
           COS_REGION: ${{ secrets.COS_REGION }}
         run: |
           # 动态路径检测
-          CHANGED_MODULES=$(git diff --name-only HEAD^ HEAD | grep -E 'MZAPI/|src/' | xargs dirname | sort -u | tr '\n' ' ')
+          CHANGED_MODULES=$(git diff --name-only HEAD^ HEAD | grep -E 'MB/|src/' | xargs dirname | sort -u | tr '\n' ' ')
           
           # 多维度分析
           pyreverse -o png -ASmn -p FullSystem $CHANGED_MODULES
