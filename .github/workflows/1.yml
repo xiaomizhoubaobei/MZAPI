@@ -2,86 +2,95 @@ name: 智能架构分析工作流
 
 on:
   pull_request:
-
+    branches: [ main ]
+    paths:
+      - 'MZAPI/MB/**'
+      - 'src/**'
+      - 'scripts/arch_*.py'
     types:
-      - opened          # PR创建
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 jobs:
   architecture-analysis:
-    name: 全量架构分析
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      pull-requests: write  # 允许评论PR
-      contents: read        # 允许读取代码
+      pull-requests: write
+      contents: read
 
     steps:
       - name: 🛠 检出PR分支代码
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}  # 关联PR分支
-          fetch-depth: 2               # 启用深度克隆用于diff分析
-          submodules: recursive        # 包含子模块
+          ref: ${{ github.head_ref }}
+          fetch-depth: 2
+          submodules: recursive
 
       - name: 🐍 配置Python环境
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-          cache: 'pip'                 # 启用pip缓存加速
+          cache: 'pip'
 
       - name: 📦 安装系统依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            graphviz \          # 图表生成
-            plantuml \          # UML渲染
-            imagemagick \       # 图片处理
-            libxml2-dev \       # XML解析
-            libxslt-dev         # XSLT转换
+            graphviz \
+            imagemagick \
+            libxml2-dev \
+            libxslt-dev \
+            openjdk-17-jdk \
+            snapd
+
+          # 安装PlantUML并配置环境
+          sudo snap install plantuml
+          echo "PATH=$PATH:/snap/bin" >> $GITHUB_ENV
+
+          # 验证安装
+          plantuml -version
+          java -version
 
       - name: 🧩 安装Python包
         run: |
           pip install --upgrade pip
           pip install \
-            pylint \         # 代码分析
-            pyreverse \      # UML生成
-            matplotlib\     # 热度图
-            qcloud-cos\     # 腾讯云SDK
-            plantuml\       # UML渲染
-            pyyaml        # YAML解析
+            pylint \
+            pyreverse\
+            matplotlib\
+            qcloud-cos\
+            pyyaml\
+            pyan3
 
       - name: 🔍 动态变更检测
         id: changed-modules
         run: |
-          # 获取变更文件列表
-          git diff --name-only HEAD^ HEAD > changed_files.txt
-          
-          # 提取MB模块和src目录变更
-          MODULE_PATHS=$(grep -E 'MB/|src/' changed_files.txt | xargs dirname | sort -u)
-          echo "modules=${MODULE_PATHS}" >> $GITHUB_OUTPUT
-          
-          # 调试输出
-          echo "检测到变更模块："
-          echo "$MODULE_PATHS"
+          git diff --name-only HEAD^ HEAD | grep -E 'MZAPI/MB/|src/' > changed_files.txt
+          MODULE_PATHS=$(xargs dirname < changed_files.txt | sort -u | tr '\n' ' ')
+          echo "modules=$MODULE_PATHS" >> $GITHUB_OUTPUT
+          echo "检测到变更模块：$MODULE_PATHS"
 
       - name: 📊 生成架构图谱
         env:
           TARGET_MODULES: ${{ steps.changed-modules.outputs.modules }}
         run: |
-          # 类继承图
+          # 类图生成
           pyreverse -o png -ASmn -p FullSystem $TARGET_MODULES
           
           # 包依赖图
           pyreverse -k -o png -p Packages $TARGET_MODULES
           
           # 时序图生成
-          find MZAPI/MB -name '*.py' | xargs pylint --generate-uml=sequence
+          find MB -name '*.py' | xargs pylint --generate-uml=sequence
           plantuml *.puml
           
           # 调用关系图
-          pyan MZAPI/MB/**/*.py --uses --dot | dot -Tpng -o callgraph.png
+          pyan MB/**/*.py --uses --dot | dot -Tpng -o callgraph.png
           
-          # 代码热度分析（30天）
+          # 代码热度分析
           git log --since="30 days ago" --pretty=format: --name-only | grep '\.py$' | sort | uniq -c > hotspots.txt
           python -c "
           import matplotlib.pyplot as plt
@@ -89,10 +98,9 @@ jobs:
           plt.figure(figsize=(10,6))
           plt.barh([x[1] for x in data], [int(x[0]) for x in data])
           plt.title('代码变更热点分布')
-          plt.savefig('hotspots.png', bbox_inches='tight')
+          plt.savefig('hotspots.png', bbox_inches='tight)
           "
 
-          # 整理产物
           mkdir -p arch_assets
           mv *.png *.puml arch_assets/
 
@@ -104,20 +112,17 @@ jobs:
           COS_REGION: ${{ secrets.COS_REGION }}
         run: |
           pip install coscmd
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" \
-                       -b "$COS_BUCKET" -r "$COS_REGION"
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
 
-          # 构造语义化路径
           PR_NUM=${{ github.event.pull_request.number }}
-          COS_PATH="ernie-arch/pr-$PR_NUM"
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          TIMESTAMP=$(date -u +"%Y%m%dT%H%M%S")
+          COS_PATH="ernie-arch/pr-$PR_NUM/$SHORT_SHA-$TIMESTAMP"
 
-          # 批量上传并设置缓存策略
           coscmd upload -r arch_assets/ "$COS_PATH" \
             --acl public-read \
-            -H "Cache-Control: no-cache" \
-            -H "x-cos-meta-commit: $GITHUB_SHA"
+            -H "Cache-Control: no-cache"
 
-          # 生成访问链接
           echo "ARCH_BASE_URL=https://pr.mizhoubaobei.top/$COS_PATH" >> $GITHUB_ENV
 
       - name: 💬 生成PR分析报告
@@ -132,17 +137,13 @@ jobs:
               pull_number: context.issue.number
             });
 
-            // 提取新增模块
             const newModules = [...new Set(
               files
                 .filter(f => f.status === 'added' && f.filename.includes('MZAPI/MB/'))
-                .map(f => f.filename.split('/')[3])  # 提取模块名
+                .map(f => f.filename.split('/')[3])
             )];
 
-            // 生成时间戳防缓存
             const timestamp = Date.now();
-            
-            // 构建Markdown内容
             const commentBody = `
             ## 🏗 ERNIE 4.0-8K 架构分析报告
 
@@ -153,39 +154,39 @@ jobs:
                 <td><img src="${process.env.DIAGRAM_BASE}/packages_Packages.png?ts=${timestamp}" width="400"></td>
               </tr>
               <tr>
-                <td align="center">类继承关系</td>
-                <td align="center">包依赖结构</td>
+                <td>类继承关系</td>
+                <td>包依赖结构</td>
               </tr>
               <tr>
                 <td><img src="${process.env.DIAGRAM_BASE}/callgraph.png?ts=${timestamp}" width="400"></td>
                 <td><img src="${process.env.DIAGRAM_BASE}/hotspots.png?ts=${timestamp}" width="400"></td>
               </tr>
               <tr>
-                <td align="center">方法调用关系</td>
-                <td align="center">代码热点分布</td>
+                <td>方法调用关系</td>
+                <td>代码热点分布</td>
               </tr>
             </table>
 
+            ${newModules.length > 0 ? `
+            ### 🆕 新增模块
+            ${newModules.map(m => `- \`${m}\``).join('\n')}
+            ` : ''}
+
             ### 变更影响分析
-            ${newModules.length > 0 ? 
-              `🆕 检测到新模块: ${newModules.map(m => `\`${m}\``).join(', ')}` : 
-              '📌 本次未新增核心模块'}
-            
-            **受影响文件**：
+            **涉及文件**：
             ${files.filter(f => f.filename.startsWith('MZAPI/MB/')).map(f => `
             - \`${f.filename}\`  
               ▸ 状态: ${f.status} | 新增行: +${f.additions} | 删除行: -${f.deletions}`).join('\n')}
 
-            ### 版本信息
             <details>
-            <summary>查看详细指纹</summary>
-            
+            <summary>📌 版本指纹信息</summary>
+
             | 项目 | 值 |
             |---|---|
             | PR编号 | #${context.issue.number} |
             | 提交哈希 | \`${process.env.GITHUB_SHA}\` |
             | 生成时间 | ${new Date().toISOString()} |
-            | 完整报告 | [COS浏览器查看](${process.env.DIAGRAM_BASE}) |
+            | 存储路径 | [COS浏览器](${process.env.DIAGRAM_BASE}) |
             </details>
             `;
 
