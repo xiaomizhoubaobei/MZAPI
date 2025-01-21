@@ -47,16 +47,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel
         pip install \
-          flake8==6.1.0 \
-          black==24.3.0 \
-          mypy==1.9.0 \
-          safety==2.4.0 \
-          bandit==1.7.7 \
-          pip-licenses==4.3.1 \
-          trufflehog3==3.1.2 \
-          matplotlib==3.8.2 \
-          pandas==2.2.1 \
-          coscmd==1.9.6
+          flake8\
+          black\
+          mypy\
+          safety\
+          bandit\
+          pip-licenses\
+          trufflehog3\
+          matplotlib\
+          pandas\
+          coscmd
         
         # 验证关键工具
         bandit --version
