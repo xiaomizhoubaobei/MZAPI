@@ -1,8 +1,5 @@
 # 小米粥API (MZAPI)
 [![PyPI version](https://badge.fury.io/py/MZAPI.svg)](https://pypi.org/project/MZAPI/)
-[![自动化处理PR(Python 3.12)](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/3.12.yml/badge.svg)](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/3.12.yml)
-[![自动化处理PR(Python 3.11)](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/3.11.yml/badge.svg)](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/3.11.yml)
-[![自动化分析PR](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/PR.yml/badge.svg)](https://github.com/xiaomizhoubaobei/MZAPI/actions/workflows/PR.yml)
 
 ## 简介
 
