@@ -256,52 +256,63 @@ jobs:
         
         echo "REPORT_URL=https://pr.mizhoubaobei.top/${ARCHIVE_DIR}/security-radar.png" >> $GITHUB_ENV
 
-    # ==================== 审查结果反馈 ====================
+        # ==================== 审查结果反馈 ====================
     - name: 提交PR审查报告
       uses: actions/github-script@v7
       env:
         SCORE: ${{ env.SECURITY_SCORE }}
         RATING: ${{ env.SECURITY_RATING }}
-        SAFETY_ISSUES: ${{ env.SAFETY_ISSUES }}
-        HIGH_RISK_ISSUES: ${{ env.HIGH_RISK_ISSUES }}
-        SECRETS_FOUND: ${{ env.SECRETS_FOUND }}
-        LICENSE_ISSUES: ${{ env.LICENSE_ISSUES }}
       with:
         script: |
-          const fs = require('fs');
-          const { markdown } = await github.markdown.render({
-            text: fs.readFileSync('issues.md', 'utf8'),
-            mode: 'gfm',
-            context: context.repo,
-          });
+          const fs = require('fs').promises;
           
-          const reportContent = `
-          ## 🔐 代码安全审查报告 - ${{ env.RATING }}
-          **综合评分**: ${{ env.SCORE }}/100
-          
-          ### 安全指标概览
-          | 检查项         | 问题数量 |
-          |---------------|----------|
-          | 依赖漏洞      | ${{ env.SAFETY_ISSUES }} |
-          | 高危代码问题  | ${{ env.HIGH_RISK_ISSUES }} |
-          | 中危代码问题  | ${{ env.MEDIUM_RISK_ISSUES }} |
-          | 敏感信息泄露  | ${{ env.SECRETS_FOUND }} |
-          | 许可协议问题  | ${{ env.LICENSE_ISSUES }} |
-          
-          ![安全态势图](${{ env.REPORT_URL }}?t=${new Date().getTime()})
-          
-          ### 问题详情清单
-          ${markdown}
-          
-          **扫描详情**: [查看完整报告](${{ env.REPORT_URL }})
-          `;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: reportContent
-          });
+          // 修正的Markdown渲染方法
+          async function renderMarkdown(text) {
+            const { data } = await github.rest.markdown.render({
+              text: text,
+              mode: 'gfm',
+              context: context.repo.repo,
+            });
+            return data;
+          }
+
+          try {
+            // 读取问题列表
+            const issuesContent = await fs.readFile('issues.md', 'utf8');
+            
+            // 生成带格式的报告正文
+            const fullReport = `
+            ## 🔐 代码安全审查报告 - ${process.env.RATING}
+            **综合评分**: ${process.env.SCORE}/100
+
+            ### 安全指标概览
+            | 检查项         | 问题数量 |
+            |---------------|----------|
+            | 依赖漏洞      | ${process.env.SAFETY_ISSUES} |
+            | 高危代码问题  | ${process.env.HIGH_RISK_ISSUES} |
+            | 中危代码问题  | ${process.env.MEDIUM_RISK_ISSUES} |
+            | 敏感信息泄露  | ${process.env.SECRETS_FOUND} |
+            | 许可协议问题  | ${process.env.LICENSE_ISSUES} |
+
+            ![安全态势图](${process.env.REPORT_URL}?t=${new Date().getTime()})
+
+            ### 问题详情清单
+            ${await renderMarkdown(issuesContent)}
+            
+            **扫描详情**: [查看完整报告](${process.env.REPORT_URL})
+            `;
+
+            // 提交PR评论
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: fullReport
+            });
+          } catch (error) {
+            core.error(`报告生成失败: ${error}`);
+            core.setFailed(error.message);
+          }
 
     # ==================== 质量门禁控制 ====================
     - name: 执行质量阻断
