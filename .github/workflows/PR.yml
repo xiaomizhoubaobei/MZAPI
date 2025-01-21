@@ -60,7 +60,7 @@ jobs:
       run: |
         pip freeze | safety check --stdin --output json > safety.json
         bandit -r . -f json -o bandit.json
-        trufflehog filesystem --directory . --json > trufflehog.json
+        trufflehog3 filesystem --directory . --json > trufflehog.json
         pip-licenses --format=json > licenses.json
 
     # ==================== 安全评分系统 ====================
