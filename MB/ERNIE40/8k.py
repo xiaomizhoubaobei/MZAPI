@@ -5,7 +5,7 @@
 from MZAPI.MB.ERNIE40.EightK import EightK
 
 
-def main():
+def main() -> None:
     """演示ERNIE-4.0-8K模型的使用"""
 
     # 用户AK/SK在以下地址获取：
