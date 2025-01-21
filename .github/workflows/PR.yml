@@ -216,6 +216,28 @@ jobs:
             open('security-radar.png', 'a').close()  # 创建空文件防止后续步骤失败
         EOF
 
+    # ==================== 问题列表生成阶段 ====================
+    - name: 生成详细问题列表
+      run: |
+        # 依赖安全问题
+        echo "### 🔧 依赖漏洞" > issues.md
+        jq -r '.vulnerabilities[] | "- **\(.package_name)@\(.analyzed_version)**\n  - 漏洞ID: \(.vulnerability_id)\n  - 描述: \(.advisory)"' safety.json >> issues.md || echo "无依赖漏洞" >> issues.md
+
+        # 代码安全问题
+        echo "\n### ⚠️ 代码风险" >> issues.md
+        jq -r '.results[] | "- **\(.issue_severity)级别** [\(.location.file)#行号\(.location.line)]\n  - 问题: \(.issue_text)\n  - 置信度: \(.issue_confidence)"' bandit.json >> issues.md || echo "无代码安全问题" >> issues.md
+
+        # 敏感信息
+        echo "\n### 🔑 敏感信息检测" >> issues.md
+        jq -r '.[] | "- 在「\(.path)」发现 \(.type)\n  - 签名: \(.signature)\n  - 上下文: \(.context)"' trufflehog.json >> issues.md || echo "未发现敏感信息" >> issues.md
+
+        # 许可证问题
+        echo "\n### 📜 许可证异常" >> issues.md
+        jq -r '.[] | select(.License | test("^MIT$|^Apache-2.0$|^BSD-") | not) | "- **\(.Name)** 使用非标准协议: \(.License)"' licenses.json >> issues.md || echo "所有依赖许可证合规" >> issues.md
+
+        # 格式优化
+        sed -i 's/\([^ ]\)$/\1\n/g' issues.md  # 确保每行结尾有换行
+
     # ==================== 云端归档阶段 ====================
     - name: 配置腾讯云存储
       run: |
@@ -246,6 +268,13 @@ jobs:
         LICENSE_ISSUES: ${{ env.LICENSE_ISSUES }}
       with:
         script: |
+          const fs = require('fs');
+          const { markdown } = await github.markdown.render({
+            text: fs.readFileSync('issues.md', 'utf8'),
+            mode: 'gfm',
+            context: context.repo,
+          });
+          
           const reportContent = `
           ## 🔐 代码安全审查报告 - ${{ env.RATING }}
           **综合评分**: ${{ env.SCORE }}/100
@@ -260,6 +289,9 @@ jobs:
           | 许可协议问题  | ${{ env.LICENSE_ISSUES }} |
           
           ![安全态势图](${{ env.REPORT_URL }}?t=${new Date().getTime()})
+          
+          ### 问题详情清单
+          ${markdown}
           
           **扫描详情**: [查看完整报告](${{ env.REPORT_URL }})
           `;
