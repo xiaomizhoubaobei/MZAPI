@@ -2,16 +2,7 @@ name: 智能架构分析工作流
 
 on:
   pull_request:
-    branches: [ main ]
-    paths:
-      - 'MZAPI/MB/**'
-      - 'src/**'
-      - 'scripts/arch_*.py'
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
+
 
 jobs:
   architecture-analysis:
