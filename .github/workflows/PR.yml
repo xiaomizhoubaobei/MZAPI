@@ -78,7 +78,7 @@ jobs:
       run: |
         flake8 . --config .flake8 || echo "Flake8检查未通过，但继续流程"
         black --check . --config pyproject.toml || echo "Black格式检查未通过"
-        mypy . --config-file mypy.ini || echo "类型检查发现问题"
+        mypy . --config-file mypy.ini --scripts-are-modules || echo "类型检查发现问题"
 
     # ==================== 安全审查阶段 ====================
     - name: 执行安全扫描
