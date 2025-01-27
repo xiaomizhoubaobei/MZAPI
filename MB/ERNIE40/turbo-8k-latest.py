@@ -2,7 +2,7 @@
 这个模块提供了ERNIE-4.0-Turbo-8K-latest模型的交互接口
 """
 
-from MZAPI.MB.ERNIE40.Turbo_8K_latest import Turbo_8K_latest
+from MZAPI.MB.ERNIE40.turbo_8k_latest import Turbo_8K_latest
 
 
 def main() -> None:
