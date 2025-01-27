@@ -2,7 +2,7 @@
 这个模块提供了ERNIE-4.0-8K-Preview模型的交互接口
 """
 
-from MZAPI.MB.ERNIE40.EightK_preview import EightK_preview
+from MZAPI.MB.ERNIE40.eightk_preview import EightK_preview
 
 
 def main() -> None:

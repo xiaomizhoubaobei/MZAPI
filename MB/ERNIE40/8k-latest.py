@@ -2,7 +2,7 @@
 这个模块提供了ERNIE-4.0-8K-Latest模型的交互接口
 """
 
-from MZAPI.MB.ERNIE40.EightK_Latest import EightK_latest
+from MZAPI.MB.ERNIE40.eightk_latest import EightK_latest
 
 
 def main() -> None:
