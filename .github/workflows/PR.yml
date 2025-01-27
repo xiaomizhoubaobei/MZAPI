@@ -6,7 +6,7 @@ on:
 jobs:
   security-check:
     name: "安全审查 - ${{ matrix.os }} Py${{ matrix.python-version }}"
-    runs-on: Linux
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
       matrix:
