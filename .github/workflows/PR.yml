@@ -5,8 +5,13 @@ on:
 
 jobs:
   security-check:
-    name: "安全与质量审查（Python）"
+    name: "安全审查 - ${{ matrix.os }} Py${{ matrix.python-version }}"
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
     timeout-minutes: 60
     permissions:
       contents: read
@@ -22,6 +27,7 @@ jobs:
 
     # ==================== 配置准备阶段 ====================
     - name: 加载检查规则
+      shell: bash
       run: |
         mkdir -p .github/linters
         [ -f .github/linters/flake8 ] || echo "[flake8]\nignore = E501,W503" > .github/linters/flake8
@@ -33,31 +39,36 @@ jobs:
     - name: 配置Python环境
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: ${{ matrix.python-version }}
 
     - name: 安装系统依赖
+      shell: bash
       run: |
-        sudo apt-get update -qq
-        sudo apt-get install -yq \
-          fonts-wqy-zenhei \
-          jq \
-          fontconfig
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get update -qq
+          sudo apt-get install -yq fonts-wqy-zenhei jq fontconfig
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          brew install jq
+          fc-cache -fv
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          choco install jq -y
+        fi
 
     - name: 安装分析工具
       run: |
         python -m pip install --upgrade pip wheel
         pip install \
-          flake8\
-          black\
-          mypy\
-          safety\
-          bandit\
-          pip-licenses\
-          trufflehog3\
-          matplotlib\
-          pandas\
+          flake8 \
+          black \
+          mypy \
+          safety \
+          bandit \
+          pip-licenses \
+          trufflehog3 \
+          matplotlib \
+          pandas \
           coscmd
-        
+
         # 验证关键工具
         bandit --version
         trufflehog3 --version
@@ -67,10 +78,11 @@ jobs:
       run: |
         flake8 . --config .flake8 || echo "Flake8检查未通过，但继续流程"
         black --check . --config pyproject.toml || echo "Black格式检查未通过"
-        mypy . --config-file mypy.ini || echo "类型检查发现问题"
+        mypy . --config-file mypy.ini --scripts-are-modules || echo "类型检查发现问题"
 
     # ==================== 安全审查阶段 ====================
     - name: 执行安全扫描
+      if: ${{ matrix.is-main || matrix.os == 'ubuntu-latest' }}
       run: |
         # 清理旧报告
         rm -f ./*.json || true
@@ -93,6 +105,7 @@ jobs:
 
     # ==================== 数据验证阶段 ====================
     - name: 验证扫描结果
+      if: ${{ matrix.is-main }}
       run: |
         validate_json() {
           local file=$1
@@ -113,6 +126,7 @@ jobs:
 
     # ==================== 安全评分系统 ====================
     - name: 计算安全评分
+      if: ${{ matrix.is-main }}
       id: security-scoring
       run: |
         # 权重配置（可调整）
@@ -176,6 +190,7 @@ jobs:
 
     # ==================== 可视化报告生成 ====================
     - name: 生成安全态势图
+      if: ${{ matrix.is-main }}
       run: |
         fc-cache -fv > /dev/null  # 刷新字体缓存
         
@@ -183,9 +198,16 @@ jobs:
         import matplotlib.pyplot as plt
         import numpy as np
         from matplotlib import rcParams
+        from matplotlib.font_manager import FontManager
         
         try:
-            rcParams['font.family'] = 'WenQuanYi Zen Hei'
+            # 自动检测中文字体
+            fm = FontManager()
+            if any('WenQuanYi' in f.name for f in fm.ttflist):
+                rcParams['font.family'] = 'WenQuanYi Zen Hei'
+            else:
+                rcParams['font.family'] = 'sans-serif'
+            
             rcParams['axes.unicode_minus'] = False
             
             categories = ['依赖安全', '高危问题', '中危问题', '敏感信息', '许可合规']
@@ -213,11 +235,12 @@ jobs:
             plt.savefig('security-radar.png', bbox_inches='tight', dpi=120)
         except Exception as e:
             print(f"图表生成失败: {str(e)}")
-            open('security-radar.png', 'a').close()  # 创建空文件防止后续步骤失败
+            open('security-radar.png', 'a').close()
         EOF
 
     # ==================== 问题列表生成阶段 ====================
     - name: 生成详细问题列表
+      if: ${{ matrix.is-main }}
       run: |
         # 依赖安全问题
         echo "### 🔧 依赖漏洞" > issues.md
@@ -236,10 +259,11 @@ jobs:
         jq -r '.[] | select(.License | test("^MIT$|^Apache-2.0$|^BSD-") | not) | "- **\(.Name)** 使用非标准协议: \(.License)"' licenses.json >> issues.md || echo "所有依赖许可证合规" >> issues.md
 
         # 格式优化
-        sed -i 's/\([^ ]\)$/\1\n/g' issues.md  # 确保每行结尾有换行
+        sed -i 's/\([^ ]\)$/\1\n/g' issues.md
 
     # ==================== 云端归档阶段 ====================
     - name: 配置腾讯云存储
+      if: ${{ matrix.is-main }}
       run: |
         coscmd config -a ${{ secrets.COS_SECRET_ID }} \
                      -s ${{ secrets.COS_SECRET_KEY }} \
@@ -247,6 +271,7 @@ jobs:
                      -r ${{ secrets.COS_REGION }} > /dev/null 2>&1
 
     - name: 归档分析结果
+      if: ${{ matrix.is-main }}
       run: |
         ARCHIVE_DIR="security-reports/$(date +"%Y%m%d")/run-${{ github.run_number }}"
         
@@ -256,8 +281,9 @@ jobs:
         
         echo "REPORT_URL=https://pr.mizhoubaobei.top/${ARCHIVE_DIR}/security-radar.png" >> $GITHUB_ENV
 
-        # ==================== 审查结果反馈 ====================
+    # ==================== 审查结果反馈 ====================
     - name: 提交PR审查报告
+      if: ${{ matrix.is-main }}
       uses: actions/github-script@v7
       env:
         SCORE: ${{ env.SECURITY_SCORE }}
@@ -266,7 +292,6 @@ jobs:
         script: |
           const fs = require('fs').promises;
           
-          // 修正的Markdown渲染方法
           async function renderMarkdown(text) {
             const { data } = await github.rest.markdown.render({
               text: text,
@@ -277,10 +302,8 @@ jobs:
           }
 
           try {
-            // 读取问题列表
             const issuesContent = await fs.readFile('issues.md', 'utf8');
             
-            // 生成带格式的报告正文
             const fullReport = `
             ## 🔐 代码安全审查报告 - ${process.env.RATING}
             **综合评分**: ${process.env.SCORE}/100
@@ -302,7 +325,6 @@ jobs:
             **扫描详情**: [查看完整报告](${process.env.REPORT_URL})
             `;
 
-            // 提交PR评论
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -316,7 +338,7 @@ jobs:
 
     # ==================== 质量门禁控制 ====================
     - name: 执行质量阻断
-      if: ${{ env.SECURITY_SCORE < 60 }}
+      if: ${{ matrix.is-main && env.SECURITY_SCORE < 60 }}
       run: |
         echo "::error::安全评分不足（当前：${{ env.SECURITY_SCORE }}/100），最低通过分数为60分"
         echo "问题摘要："
