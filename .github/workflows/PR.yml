@@ -12,6 +12,7 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
+
     timeout-minutes: 60
     permissions:
       contents: read
@@ -73,10 +74,15 @@ jobs:
         bandit --version
         trufflehog3 --version
 
+    # ==================== 代码质量审查阶段 ====================
+    - name: 执行代码规范检查
+      run: |
+        flake8 . --config .flake8 || echo "Flake8检查未通过，但继续流程"
+        black --check . --config pyproject.toml || echo "Black格式检查未通过"
+        mypy . --config-file mypy.ini --scripts-are-modules || echo "类型检查发现问题"
 
     # ==================== 安全审查阶段 ====================
     - name: 执行安全扫描
-      if: ${{ matrix.is-main || matrix.os == 'ubuntu-latest' }}
       run: |
         # 清理旧报告
         rm -f ./*.json || true
@@ -99,7 +105,6 @@ jobs:
 
     # ==================== 数据验证阶段 ====================
     - name: 验证扫描结果
-      if: ${{ matrix.is-main }}
       run: |
         validate_json() {
           local file=$1
@@ -120,7 +125,6 @@ jobs:
 
     # ==================== 安全评分系统 ====================
     - name: 计算安全评分
-      if: ${{ matrix.is-main }}
       id: security-scoring
       run: |
         # 权重配置（可调整）
@@ -184,7 +188,6 @@ jobs:
 
     # ==================== 可视化报告生成 ====================
     - name: 生成安全态势图
-      if: ${{ matrix.is-main }}
       run: |
         fc-cache -fv > /dev/null  # 刷新字体缓存
         
@@ -277,7 +280,6 @@ jobs:
 
     # ==================== 审查结果反馈 ====================
     - name: 提交PR审查报告
-      if: ${{ matrix.is-main }}
       uses: actions/github-script@v7
       env:
         SCORE: ${{ env.SECURITY_SCORE }}
@@ -332,7 +334,7 @@ jobs:
 
     # ==================== 质量门禁控制 ====================
     - name: 执行质量阻断
-      if: ${{ matrix.is-main && env.SECURITY_SCORE < 60 }}
+      if: ${{ env.SECURITY_SCORE < 60 }}
       run: |
         echo "::error::安全评分不足（当前：${{ env.SECURITY_SCORE }}/100），最低通过分数为60分"
         echo "问题摘要："
