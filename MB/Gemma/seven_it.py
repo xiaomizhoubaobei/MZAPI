@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """这个模块提供了Gemma-7B-IT模型的交互接口"""
 
 from MZAPI.MB.Gemma.seven_it import seven_it
