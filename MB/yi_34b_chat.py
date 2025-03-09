@@ -1,16 +1,14 @@
 """
-这个模块提供了Llama-2-7b模型的交互接口
+这个模块提供了与Yi34BChat 模型的交互接口
 """
-
-from MZAPI.MB.Llama_2_7b.qianfan_chinese import Qianfan_Chinese
-
+from MZAPI.MB.yi_34b_chat import Yi34BChat
 
 def main() -> None:
-    """演示Llama-2-7b模型的使用"""
+    """演示Yi34BChat 模型的使用"""
 
     # 用户AK/SK在以下地址获取：
     # https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application
-    model = Qianfan_Chinese("custom_client", "user_ak", "user_sk")
+    model = Yi34BChat("custom_client", "user_ak", "user_sk")
     result = model.get_response("测试文本")
     print(result)
 
